@@ -120,3 +120,170 @@ async function deleteEmployeeAccount(employeeId) {
   }
 }
 
+// allsettingtable에서 접근 권한 데이터 가져오기
+async function getAllSettingTableData() {
+  try {
+    const { data, error } = await supabase
+      .from('allsettingtable')
+      .select('카테고리순서, 카테고리, 업무구분, 아이콘, 연결주소')
+      .order('카테고리순서');
+    
+    if (error) {
+      console.error('allsettingtable 데이터 로드 에러:', error);
+      return [];
+    }
+    
+    return data || [];
+  } catch (error) {
+    console.error('allsettingtable 데이터 로드 중 예외 발생:', error);
+    return [];
+  }
+}
+
+// 직원의 접근 권한 조회
+async function getEmployeeAccessPermissions(employeeId) {
+  try {
+    console.log('접근 권한 조회 시작 - 직원번호:', employeeId);
+    
+    // 먼저 테이블의 모든 컬럼을 확인
+    const { data: allData, error: allError } = await supabase
+      .from('employees_approach')
+      .select('*')
+      .limit(1);
+    
+    if (allError) {
+      console.error('테이블 스키마 확인 실패:', allError);
+    } else {
+      console.log('employees_approach 테이블 컬럼:', allData.length > 0 ? Object.keys(allData[0]) : '테이블이 비어있음');
+    }
+    
+    const { data, error } = await supabase
+      .from('employees_approach')
+      .select('*')
+      .eq('직원번호', employeeId);
+    
+    if (error) {
+      console.error('직원 접근 권한 로드 에러:', error);
+      return [];
+    }
+    
+    console.log('조회된 접근 권한 데이터:', data);
+    return data || [];
+  } catch (error) {
+    console.error('직원 접근 권한 로드 중 예외 발생:', error);
+    return [];
+  }
+}
+
+// 직원의 접근 권한 저장
+async function saveEmployeeAccessPermissions(employeeId, permissions) {
+  try {
+    console.log('접근 권한 저장 시작 - 직원번호:', employeeId);
+    console.log('저장할 권한 데이터:', permissions);
+    
+    // 기존 권한 삭제
+    const { error: deleteError } = await supabase
+      .from('employees_approach')
+      .delete()
+      .eq('직원번호', employeeId);
+    
+    if (deleteError) {
+      console.error('기존 권한 삭제 실패:', deleteError);
+      return { success: false, message: '기존 권한 삭제에 실패했습니다.' };
+    }
+
+    // 새로운 권한 추가
+    if (permissions.length > 0) {
+      // 실제 테이블 컬럼명에 맞게 데이터 구성
+      const formattedPermissions = permissions.map(permission => ({
+        직원번호: permission.직원번호,
+        카테고리순서: permission.카테고리순서,
+        업무구분: permission.업무구분,
+        연결주소: permission.연결주소
+      }));
+      
+      console.log('포맷된 권한 데이터:', formattedPermissions);
+      
+      const { error: insertError } = await supabase
+        .from('employees_approach')
+        .insert(formattedPermissions);
+      
+      if (insertError) {
+        console.error('새 권한 추가 실패:', insertError);
+        return { success: false, message: '새 권한 추가에 실패했습니다.' };
+      }
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error('접근 권한 저장 중 예외 발생:', error);
+    return { success: false, message: '접근 권한 저장 중 오류가 발생했습니다.' };
+  }
+}
+
+// 직원의 접근 권한 수정
+async function updateEmployeeAccessPermissions(employeeId, permissions) {
+  try {
+    console.log('접근 권한 수정 시작 - 직원번호:', employeeId);
+    console.log('수정할 권한 데이터:', permissions);
+    
+    // 기존 권한 삭제
+    const { error: deleteError } = await supabase
+      .from('employees_approach')
+      .delete()
+      .eq('직원번호', employeeId);
+    
+    if (deleteError) {
+      console.error('기존 권한 삭제 실패:', deleteError);
+      return { success: false, message: '기존 권한 삭제에 실패했습니다.' };
+    }
+
+    // 새로운 권한 추가
+    if (permissions.length > 0) {
+      // 실제 테이블 컬럼명에 맞게 데이터 구성
+      const formattedPermissions = permissions.map(permission => ({
+        직원번호: permission.직원번호,
+        카테고리순서: permission.카테고리순서,
+        업무구분: permission.업무구분,
+        연결주소: permission.연결주소
+      }));
+      
+      console.log('포맷된 권한 데이터:', formattedPermissions);
+      
+      const { error: insertError } = await supabase
+        .from('employees_approach')
+        .insert(formattedPermissions);
+      
+      if (insertError) {
+        console.error('새 권한 추가 실패:', insertError);
+        return { success: false, message: '새 권한 추가에 실패했습니다.' };
+      }
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error('접근 권한 수정 중 예외 발생:', error);
+    return { success: false, message: '접근 권한 수정 중 오류가 발생했습니다.' };
+  }
+}
+
+// 직원의 접근 권한 삭제
+async function deleteEmployeeAccessPermissions(employeeId) {
+  try {
+    const { error } = await supabase
+      .from('employees_approach')
+      .delete()
+      .eq('직원번호', employeeId);
+    
+    if (error) {
+      console.error('접근 권한 삭제 실패:', error);
+      return { success: false, message: '접근 권한 삭제에 실패했습니다.' };
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error('접근 권한 삭제 중 예외 발생:', error);
+    return { success: false, message: '접근 권한 삭제 중 오류가 발생했습니다.' };
+  }
+}
+
