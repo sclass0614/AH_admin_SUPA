@@ -53,31 +53,49 @@
         <div class="employee-form" id="employeeFormContainer">
           <h3>직원 정보</h3>
           <form id="employeeForm" onsubmit="return false;">
-            <div class="form-group">
-              <label for="employeeId">직원번호</label>
-              <div class="input-with-button">
-                <input type="text" id="employeeId" name="employeeId" readonly />
-                <button type="button" id="searchEmployeeBtn">검색</button>
+            <!-- 직원 정보 컨테이너 -->
+            <div class="employee-info-container">
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="employeeId">직원번호</label>
+                  <div class="input-with-button">
+                    <input type="text" id="employeeId" name="employeeId" readonly />
+                    <button type="button" id="searchEmployeeBtn">검색</button>
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label for="employeeName">직원명</label>
+                  <input type="text" id="employeeName" name="employeeName" />
+                </div>
+              </div>
+              <div class="form-group">
+                <label for="employeePassword">비밀번호</label>
+                <input
+                  type="password"
+                  id="employeePassword"
+                  name="employeePassword"
+                  minlength="6"
+                  placeholder="비밀번호는 최소 6자리 이상"
+                />
+                <div class="password-hint">
+                  * 비밀번호는 최소 6자리 이상 입력해주세요
+                </div>
               </div>
             </div>
-            <div class="form-group">
-              <label for="employeeName">직원명</label>
-              <input type="text" id="employeeName" name="employeeName" />
-            </div>
-            <div class="form-group">
-              <label for="employeePassword">비밀번호</label>
-              <input
-                type="password"
-                id="employeePassword"
-                name="employeePassword"
-                minlength="6"
-                placeholder="비밀번호는 최소 6자리 이상"
-              />
-              <div class="password-hint">
-                * 비밀번호는 최소 6자리 이상 입력해주세요
+
+            <!-- 접근 권한 컨테이너 -->
+            <div class="access-permissions-container">
+              <div class="permissions-header">
+                <h4>접근 권한 관리</h4>
+                <button type="button" id="toggleAllPermissionsBtn" class="toggle-all-btn">전체 선택</button>
+              </div>
+              <div class="permissions-grid" id="permissionsGrid">
+                <!-- 체크박스들이 동적으로 생성됩니다 -->
               </div>
             </div>
-            <div class="form-buttons">
+
+            <!-- 버튼 컨테이너 -->
+            <div class="form-buttons-container">
               <button type="button" id="saveBtn">저장</button>
               <button type="button" id="updateBtn">수정</button>
               <button type="button" id="deleteBtn">삭제</button>
@@ -154,25 +172,35 @@
 
     <script>
       let all_employeesinfo = null;
+      let all_setting_data = null;
+
 
       // Supabase 인증 관련 기능을 관리하는 스크립트
 
       // 페이지 로드 시 실행
       document.addEventListener("DOMContentLoaded", async function () {
-        // 직원 정보 로드
+        // 직원 정보 및 설정 데이터 로드
         try {
           showLoading();
           all_employeesinfo = await getEmployeesInfo();
+          all_setting_data = await getAllSettingTableData();
           console.log("직원 정보 로드 완료:", all_employeesinfo);
+          console.log("설정 데이터 로드 완료:", all_setting_data);
 
           // 직원 정보 로드 후 직원 목록 초기화
           await initEmployeeList();
 
+          // 접근 권한 체크박스 초기화
+          initPermissionsGrid();
+
+          // 초기 버튼 상태 설정 (모든 버튼 비활성화)
+          resetButtons();
+
           hideLoading();
         } catch (error) {
-          console.error("직원 정보 로드 중 오류:", error);
+          console.error("데이터 로드 중 오류:", error);
           hideLoading();
-          showAlert("직원 정보 로드에 실패했습니다.");
+          showAlert("데이터 로드에 실패했습니다.");
         }
 
         // 직원 검색 버튼 이벤트 설정
@@ -192,23 +220,51 @@
           );
         }
 
-        // 삭제 버튼 이벤트 설정
-        const deleteBtn = document.getElementById("deleteBtn");
-        if (deleteBtn) {
-          deleteBtn.addEventListener("click", deleteEmployee);
-        }
 
-        // 저장 버튼 이벤트 설정
+
+        // 폼 버튼 이벤트 설정 - 새로 작성
+        console.log("=== 폼 버튼 이벤트 설정 시작 ===");
+        
+        // 저장 버튼
         const saveBtn = document.getElementById("saveBtn");
+        console.log("저장 버튼 찾기:", saveBtn);
         if (saveBtn) {
-          saveBtn.addEventListener("click", saveEmployee);
+          saveBtn.onclick = function(e) {
+            e.preventDefault();
+            console.log("저장 버튼 클릭됨!");
+            console.log("저장 버튼 disabled:", this.disabled);
+            saveEmployee();
+          };
+          console.log("저장 버튼 이벤트 설정 완료");
         }
 
-        // 수정 버튼 이벤트 설정
+        // 수정 버튼
         const updateBtn = document.getElementById("updateBtn");
+        console.log("수정 버튼 찾기:", updateBtn);
         if (updateBtn) {
-          updateBtn.addEventListener("click", updateEmployee);
+          updateBtn.onclick = function(e) {
+            e.preventDefault();
+            console.log("수정 버튼 클릭됨!");
+            console.log("수정 버튼 disabled:", this.disabled);
+            updateEmployee();
+          };
+          console.log("수정 버튼 이벤트 설정 완료");
         }
+
+        // 삭제 버튼
+        const deleteBtn = document.getElementById("deleteBtn");
+        console.log("삭제 버튼 찾기:", deleteBtn);
+        if (deleteBtn) {
+          deleteBtn.onclick = function(e) {
+            e.preventDefault();
+            console.log("삭제 버튼 클릭됨!");
+            console.log("삭제 버튼 disabled:", this.disabled);
+            deleteEmployee();
+          };
+          console.log("삭제 버튼 이벤트 설정 완료");
+        }
+        
+        console.log("=== 폼 버튼 이벤트 설정 완료 ===");
 
         // 직원 검색 모달 닫기 버튼 이벤트 설정
         const closeSearchModalBtn = document.querySelector(
@@ -220,6 +276,16 @@
             closeEmployeeSearchModal
           );
         }
+
+
+
+        // 전체 선택/해지 버튼 이벤트 설정
+        const toggleAllPermissionsBtn = document.getElementById("toggleAllPermissionsBtn");
+        if (toggleAllPermissionsBtn) {
+          toggleAllPermissionsBtn.addEventListener("click", toggleAllPermissions);
+        }
+
+
       });
 
       // Supabase 클라이언트가 초기화되었는지 확인
@@ -328,19 +394,24 @@
           `;
 
           // 행 클릭 이벤트 추가
-          newRow.addEventListener("click", function () {
+          newRow.addEventListener("click", async function () {
+            console.log("직원 목록에서 직원 클릭됨:", employee.employeeId);
+            
             // 현재 선택된 행에서 선택 효과 제거
             const selectedRow = tableBody.querySelector(".selected-row");
             if (selectedRow) selectedRow.classList.remove("selected-row");
 
             // 클릭된 행에 선택 효과 추가
-            this.classList.add("selected-row");
+                         this.classList.add("selected-row");
 
             // 직원 정보 폼에 데이터 채우기
             document.getElementById("employeeId").value = employee.employeeId;
             document.getElementById("employeeName").value = employee.name;
             document.getElementById("employeePassword").value =
               employee.password;
+
+                         // 직원의 접근 권한 로드
+             await loadEmployeePermissions(employee.employeeId);
           });
 
           tableBody.appendChild(newRow);
@@ -516,6 +587,8 @@
           employeeSearchInput.value = "";
           employeeSearchInput.focus();
         }
+
+        // 버튼 상태는 직원번호 입력필드 값에 따라 자동으로 설정됨
       }
 
       // 직원 검색 모달 닫기
@@ -574,21 +647,126 @@
           `;
 
           // 더블 클릭 이벤트
-          newRow.addEventListener("dblclick", function () {
+          newRow.addEventListener("dblclick", async function () {
             document.getElementById("employeeId").value = employee.직원번호;
             document.getElementById("employeeName").value = employee.직원명;
             closeEmployeeSearchModal();
+            
+            // 직원의 접근 권한 로드
+            await loadEmployeePermissions(employee.직원번호);
           });
 
           tableBody.appendChild(newRow);
         });
       }
 
+      // 접근 권한 그리드 초기화
+      function initPermissionsGrid() {
+        const permissionsGrid = document.getElementById("permissionsGrid");
+        if (!permissionsGrid || !all_setting_data) return;
+
+        permissionsGrid.innerHTML = "";
+
+        all_setting_data.forEach((item, index) => {
+          const permissionItem = document.createElement("div");
+          permissionItem.className = "permission-item";
+          
+          const checkboxId = `permission_${index}`;
+          
+          permissionItem.innerHTML = `
+            <input type="checkbox" id="${checkboxId}" data-category-order="${item.카테고리순서}" data-work-type="${item.업무구분}" data-url="${item.연결주소 || ''}">
+            <label for="${checkboxId}">
+              <div class="permission-category">${item.카테고리}</div>
+              <div class="permission-name">${item.업무구분}</div>
+            </label>
+          `;
+          
+          permissionsGrid.appendChild(permissionItem);
+        });
+      }
+
+      // 직원의 접근 권한 체크박스 설정
+      async function loadEmployeePermissions(employeeId) {
+        if (!employeeId) return;
+
+        try {
+          const permissions = await getEmployeeAccessPermissions(employeeId);
+          
+          // 모든 체크박스 초기화
+          const checkboxes = document.querySelectorAll('#permissionsGrid input[type="checkbox"]');
+          checkboxes.forEach(checkbox => {
+            checkbox.checked = false;
+          });
+
+          // 해당 직원의 권한만 체크
+          permissions.forEach(permission => {
+            const checkbox = document.querySelector(`#permissionsGrid input[data-category-order="${permission.카테고리순서}"][data-work-type="${permission.업무구분}"]`);
+            if (checkbox) {
+              checkbox.checked = true;
+            }
+          });
+        } catch (error) {
+          console.error("직원 권한 로드 중 오류:", error);
+        }
+      }
+
+      // 선택된 접근 권한 가져오기
+      function getSelectedPermissions(employeeId) {
+        const selectedPermissions = [];
+        const checkboxes = document.querySelectorAll('#permissionsGrid input[type="checkbox"]:checked');
+        
+        checkboxes.forEach(checkbox => {
+          selectedPermissions.push({
+            직원번호: employeeId,
+            카테고리순서: checkbox.getAttribute('data-category-order'),
+            업무구분: checkbox.getAttribute('data-work-type'),
+            연결주소: checkbox.getAttribute('data-url')
+          });
+        });
+        
+        return selectedPermissions;
+      }
+
+      // 전체 선택/해지 버튼 기능
+      function toggleAllPermissions() {
+        const checkboxes = document.querySelectorAll('#permissionsGrid input[type="checkbox"]');
+        const isChecked = document.getElementById('toggleAllPermissionsBtn').textContent === '전체 선택';
+
+        checkboxes.forEach(checkbox => {
+          checkbox.checked = isChecked;
+        });
+
+        document.getElementById('toggleAllPermissionsBtn').textContent = isChecked ? '전체 해지' : '전체 선택';
+      }
+
+
+
       // 직원 정보 폼 초기화
       function resetEmployeeForm() {
         document.getElementById("employeeId").value = "";
         document.getElementById("employeeName").value = "";
         document.getElementById("employeePassword").value = "";
+        
+        // 체크박스 초기화
+        const checkboxes = document.querySelectorAll('#permissionsGrid input[type="checkbox"]');
+        checkboxes.forEach(checkbox => {
+          checkbox.checked = false;
+        });
+
+
+      }
+
+      // 직원 목록에서 직원이 존재하는지 확인하는 함수
+      async function checkEmployeeExistsInList(employeeId) {
+        if (!employeeId) return false;
+        
+        try {
+          const employees = await loadEmployeeList();
+          return employees.some(emp => emp.employeeId.toLowerCase() === employeeId.toLowerCase());
+        } catch (error) {
+          console.error("직원 존재 여부 확인 중 오류:", error);
+          return false;
+        }
       }
 
       // 직원 정보 저장
@@ -622,6 +800,13 @@
             return;
           }
 
+          // 기존 직원이 있는지 확인
+          const employeeExists = await checkEmployeeExistsInList(employeeId);
+          if (employeeExists) {
+            showAlert("이미 존재하는 직원번호입니다. 다른 직원번호를 사용해주세요.");
+            return;
+          }
+
           showLoading();
 
           // 직원 계정 생성
@@ -631,6 +816,15 @@
             hideLoading();
             showAlert(`계정 생성 실패: ${result.message}`);
             return;
+          }
+
+          // 접근 권한 저장
+          const selectedPermissions = getSelectedPermissions(employeeId);
+          if (selectedPermissions.length > 0) {
+            const permissionResult = await saveEmployeeAccessPermissions(employeeId, selectedPermissions);
+            if (!permissionResult.success) {
+              console.warn("접근 권한 저장 실패:", permissionResult.message);
+            }
           }
 
           // 직원 목록 다시 로드
@@ -651,9 +845,13 @@
 
       // 직원 정보 수정
       async function updateEmployee() {
+        console.log("updateEmployee 함수 시작");
         try {
           const employeeId = document.getElementById("employeeId").value.trim();
           const password = document.getElementById("employeePassword").value;
+
+          console.log("직원번호:", employeeId);
+          console.log("비밀번호 길이:", password.length);
 
           // 유효성 검사
           if (!employeeId) {
@@ -672,9 +870,16 @@
             return;
           }
 
+          // 기존 직원이 있는지 확인
+          const employeeExists = await checkEmployeeExistsInList(employeeId);
+          if (!employeeExists) {
+            showAlert("존재하지 않는 직원번호입니다. 올바른 직원번호를 입력해주세요.");
+            return;
+          }
+
           // 수정 전에 확인
           const confirmed = await showConfirmModal(
-            "비밀번호를 변경하시겠습니까?"
+            "비밀번호와 접근 권한을 변경하시겠습니까?"
           );
           if (!confirmed) return;
 
@@ -683,14 +888,22 @@
           // 직원 비밀번호 수정
           const result = await updateEmployeePassword(employeeId, password);
 
-          hideLoading();
-
           if (!result.success) {
+            hideLoading();
             showAlert(`비밀번호 수정 실패: ${result.message}`);
             return;
           }
 
-          showAlert("비밀번호가 성공적으로 변경되었습니다.");
+          // 접근 권한 수정
+          const selectedPermissions = getSelectedPermissions(employeeId);
+          const permissionResult = await updateEmployeeAccessPermissions(employeeId, selectedPermissions);
+          
+          if (!permissionResult.success) {
+            console.warn("접근 권한 수정 실패:", permissionResult.message);
+          }
+
+          hideLoading();
+          showAlert("비밀번호와 접근 권한이 성공적으로 변경되었습니다.");
         } catch (error) {
           hideLoading();
           console.error("직원 정보 수정 중 오류 발생:", error);
@@ -709,9 +922,16 @@
             return;
           }
 
+          // 기존 직원이 있는지 확인
+          const employeeExists = await checkEmployeeExistsInList(employeeId);
+          if (!employeeExists) {
+            showAlert("존재하지 않는 직원번호입니다. 올바른 직원번호를 입력해주세요.");
+            return;
+          }
+
           // 삭제 전에 확인
           const confirmed = await showConfirmModal(
-            "정말로 이 직원 계정을 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다."
+            "정말로 이 직원 계정과 접근 권한을 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다."
           );
           if (!confirmed) return;
 
@@ -726,12 +946,18 @@
             return;
           }
 
+          // 접근 권한 삭제
+          const permissionResult = await deleteEmployeeAccessPermissions(employeeId);
+          if (!permissionResult.success) {
+            console.warn("접근 권한 삭제 실패:", permissionResult.message);
+          }
+
           // 직원 목록 다시 로드
           const employees = await loadEmployeeList();
           displayEmployeesInTable(employees);
 
           hideLoading();
-          showAlert("직원 계정이 성공적으로 삭제되었습니다.");
+          showAlert("직원 계정과 접근 권한이 성공적으로 삭제되었습니다.");
 
           // 폼 초기화
           resetEmployeeForm();
